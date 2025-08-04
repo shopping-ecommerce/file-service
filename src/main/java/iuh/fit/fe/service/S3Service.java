@@ -1,6 +1,7 @@
 package iuh.fit.fe.service;
 
 import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,19 +23,15 @@ import java.util.List;
 @Service
 @Slf4j
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@RequiredArgsConstructor
 public class S3Service {
-    @Autowired
-    S3Client s3Client;
+    final S3Client s3Client;
     @Value("${aws.bucketName}")
     String bucketName;
     @Value("${aws.region}")
     String region;
 
-    public S3Service(S3Client s3Client, @Value("${aws.bucketName}") String bucketName) {
-        this.s3Client = s3Client;
-        this.bucketName = bucketName;
-        log.info("S3Client initialized: {}", s3Client != null);
-    }
+
     public List<String> uploadFile(List<MultipartFile> files) throws IOException {
         try {
             return files.stream().map(file -> {
