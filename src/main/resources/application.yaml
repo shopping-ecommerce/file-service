@@ -16,7 +16,6 @@ app:
   file:
     storage-dir: D:/upload
     download-prefix: http://localhost:8888/savorgo/api/file/media/download/
-
 aws:
   accessKey: ${AWS_ACCESS_KEY}
   secretKey: ${AWS_SECRET_KEY}

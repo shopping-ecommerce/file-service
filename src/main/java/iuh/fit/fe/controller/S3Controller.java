@@ -1,6 +1,7 @@
 package iuh.fit.fe.controller;
 
 import iuh.fit.fe.dto.ApiResponse;
+import iuh.fit.fe.dto.DeleteRequest;
 import iuh.fit.fe.service.S3Service;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,17 @@ public class S3Controller {
                 .code(200)
                 .message("File downloaded successfully")
                 .result(fileData)
+                .build();
+    }
+
+    @PostMapping("/s3/delete")
+    public ApiResponse<List<String>> deleteByUrl(@RequestBody DeleteRequest deleteRequest) {
+        log.info("Deleting files with URLs: {}", deleteRequest.getUrls().toString());
+        List<String> deletedKeys = s3Service.deleteFiles(deleteRequest.getUrls());
+        return ApiResponse.<List<String>>builder()
+                .code(200)
+                .message("File(s) deleted successfully")
+                .result(deletedKeys)
                 .build();
     }
 }
