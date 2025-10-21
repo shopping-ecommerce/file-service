@@ -1,10 +1,10 @@
 package iuh.fit.fe.service;
 
+import iuh.fit.fe.exception.AppException;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,41 +28,74 @@ import java.util.List;
 @RequiredArgsConstructor
 public class S3Service {
     final S3Client s3Client;
+    final ImageValidationService imageValidationService;
+
     @Value("${aws.bucketName}")
     String bucketName;
+
     @Value("${aws.region}")
     String region;
 
-
     public List<String> uploadFile(List<MultipartFile> files) throws IOException {
+        if (files == null || files.isEmpty()) {
+            log.warn("No files provided for upload");
+            return List.of();
+        }
+
+        log.info("Starting upload process for {} file(s)", files.size());
+
         try {
-            return files.stream().map(file -> {
+            // Validate tất cả ảnh trước khi upload
+            log.info("Step 1: Validating {} file(s) before upload", files.size());
+            imageValidationService.validateImages(files);
+            log.info("Step 2: All files passed validation, proceeding to upload");
+
+            List<String> uploadedUrls = new ArrayList<>();
+
+            for (int i = 0; i < files.size(); i++) {
+                MultipartFile file = files.get(i);
                 try {
+                    log.info("Uploading file {}/{}: {}", i + 1, files.size(), file.getOriginalFilename());
+
                     String fileName = customizeFileName(file.getOriginalFilename());
                     s3Client.putObject(
                             PutObjectRequest.builder()
                                     .bucket(bucketName)
                                     .key(fileName)
+                                    .contentType(file.getContentType())
                                     .build(),
                             RequestBody.fromBytes(file.getBytes()));
-                            return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, fileName);
+
+                    String fileUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
+                            bucketName, region, fileName);
+                    uploadedUrls.add(fileUrl);
+                    log.info("Successfully uploaded file {}/{}: {} -> {}",
+                            i + 1, files.size(), file.getOriginalFilename(), fileName);
 
                 } catch (IOException e) {
-                    log.error("Failed to upload file {}: {}", file.getOriginalFilename(), e.getMessage());
-                    throw new RuntimeException(e);
+                    log.error("Failed to upload file {}: {}", file.getOriginalFilename(), e.getMessage(), e);
+                    throw new RuntimeException("Failed to upload file: " + file.getOriginalFilename(), e);
                 }
-            }).toList();
+            }
+
+            log.info("Successfully uploaded {}/{} file(s)", uploadedUrls.size(), files.size());
+            return uploadedUrls;
+
+        } catch (AppException e) {
+            log.error("Image validation failed: {}", e.getMessage());
+            throw e; // Let the exception handler deal with it
         } catch (Exception e) {
-            log.error("Failed to upload file {} to S3");
+            log.error("Failed to upload files to S3: {}", e.getMessage(), e);
             throw e;
         }
     }
 
     public byte[] downloadFile(String key) {
-        ResponseBytes<GetObjectResponse> objectAsByte = s3Client.getObjectAsBytes(GetObjectRequest.builder()
+        ResponseBytes<GetObjectResponse> objectAsByte = s3Client.getObjectAsBytes(
+                GetObjectRequest.builder()
                         .bucket(bucketName)
                         .key(key)
-                .build());
+                        .build());
         return objectAsByte.asByteArray();
     }
 
