@@ -84,10 +84,9 @@ public class ImageValidationService {
                 String reasons = unsafeLabels.stream()
                         .map(label -> String.format("%s (%.2f%%)", label.name(), label.confidence()))
                         .collect(Collectors.joining(", "));
-
                 log.warn("Image rejected - File: {}, Reasons: {}", file.getOriginalFilename(), reasons);
+                throw new AppException(ErrorCode.IMAGE_CONTENT_NOT_ALLOWED);
             }
-            throw new AppException(ErrorCode.IMAGE_CONTENT_NOT_ALLOWED);
 
 //            log.info("Image validation passed: {}", file.getOriginalFilename());
 
