@@ -85,6 +85,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>rekognition</artifactId>
+            <version>2.32.11</version>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>

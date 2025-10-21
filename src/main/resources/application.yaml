@@ -21,7 +21,11 @@ aws:
   secretKey: ${AWS_SECRET_KEY}
   region: ${AWS_REGION}
   bucketName: ${AWS_BUCKET_NAME}
+  rekognition:
+    # Ngưỡng độ tin cậy (0-100). Mặc định 80%
+    confidence-threshold: 80.0
 
 logging:
   level:
     software.amazon.awssdk: DEBUG
+    iuh.fit.fe.service: DEBUG

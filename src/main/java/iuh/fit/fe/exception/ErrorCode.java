@@ -27,7 +27,8 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST),
     UNAUTHENTICATED(1008, "Email or password is incorrect", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1009, "You are not authorized to perform this action", HttpStatus.BAD_REQUEST),
-    ;
+    FILE_NOT_VALID(1010, "File is not a valid image format", HttpStatus.BAD_REQUEST),
+    IMAGE_CONTENT_NOT_ALLOWED(1011, "Image contains inappropriate content", HttpStatus.BAD_REQUEST);
     int code;
     String message;
     private HttpStatusCode httpStatusCode;
