@@ -1,5 +1,6 @@
 package iuh.fit.fe.service;
 
+import iuh.fit.fe.dto.ImageValidationResult;
 import iuh.fit.fe.exception.AppException;
 import iuh.fit.fe.exception.ErrorCode;
 import lombok.AccessLevel;
@@ -14,10 +15,7 @@ import software.amazon.awssdk.services.rekognition.RekognitionClient;
 import software.amazon.awssdk.services.rekognition.model.*;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -99,6 +97,95 @@ public class ImageValidationService {
             log.error("Unexpected error validating image {}: {}", file.getOriginalFilename(), e.getMessage(), e);
             throw new AppException(ErrorCode.FILE_NOT_VALID);
         }
+    }
+
+    public List<ImageValidationResult> validateImagesDetailed(List<MultipartFile> files) throws IOException {
+        if (files == null || files.isEmpty()) {
+            throw new AppException(ErrorCode.FILE_NOT_VALID);
+        }
+
+        List<ImageValidationResult> results = new ArrayList<>();
+
+        for (int i = 0; i < files.size(); i++) {
+            MultipartFile f = files.get(i);
+            String fn = f != null ? f.getOriginalFilename() : "(null)";
+
+            // check định dạng trước
+            if (f == null || !isImageFile(f)) {
+                results.add(ImageValidationResult.builder()
+                        .index(i)
+                        .position(i + 1)
+                        .filename(fn)
+                        .passed(false)
+                        .reason("không phải file ảnh hoặc file rỗng")
+                        .blockedLabels(List.of())
+                        .build());
+                continue;
+            }
+
+            try {
+                // dùng lại logic trong validateImage(...) nhưng thay vì throw ở đây
+                // ta tự kiểm tra và tạo result
+                DetectModerationLabelsResponse resp = detectModerationLabels(f);
+                List<ModerationLabel> labels = resp.moderationLabels() != null
+                        ? resp.moderationLabels() : List.of();
+
+                // lọc theo ngưỡng và BLOCKED_LABELS
+                List<ModerationLabel> unsafe = labels.stream()
+                        .filter(l -> l.confidence() >= confidenceThreshold)
+                        .filter(l -> BLOCKED_LABELS.contains(l.name())
+                                || (l.parentName() != null && BLOCKED_LABELS.contains(l.parentName())))
+                        .toList();
+
+                if (unsafe.isEmpty()) {
+                    results.add(ImageValidationResult.builder()
+                            .index(i)
+                            .position(i + 1)
+                            .filename(fn)
+                            .passed(true)
+                            .reason(null)
+                            .blockedLabels(List.of())
+                            .build());
+                } else {
+                    // gom lý do
+                    String reason = unsafe.stream()
+                            .map(l -> String.format("%s (%.2f%%)", l.name(), l.confidence()))
+                            .collect(Collectors.joining(", "));
+
+                    results.add(ImageValidationResult.builder()
+                            .index(i)
+                            .position(i + 1)
+                            .filename(fn)
+                            .passed(false)
+                            .reason(reason)
+                            .blockedLabels(unsafe.stream().map(ModerationLabel::name).distinct().toList())
+                            .build());
+                }
+
+            } catch (RekognitionException e) {
+                log.error("Rekognition error for {}: {}", fn, e.getMessage());
+                results.add(ImageValidationResult.builder()
+                        .index(i)
+                        .position(i + 1)
+                        .filename(fn)
+                        .passed(false)
+                        .reason("rekognition error: " + e.getMessage())
+                        .blockedLabels(List.of())
+                        .build());
+            } catch (Exception e) {
+                log.error("Unexpected error validating {}: {}", fn, e.getMessage(), e);
+                results.add(ImageValidationResult.builder()
+                        .index(i)
+                        .position(i + 1)
+                        .filename(fn)
+                        .passed(false)
+                        .reason("unexpected error: " + e.getMessage())
+                        .blockedLabels(List.of())
+                        .build());
+            }
+        }
+
+        return results;
     }
 
     /**
