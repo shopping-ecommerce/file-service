@@ -14,18 +14,16 @@ Kiến trúc microservices với File-Service làm core cho media handling. Các
 - **Validation**: AWS Rekognition (analyze labels, confidence >80%).
 - **Security**: JWT (OAuth2), public /media/download/**.
 - **Deployment**: Docker + Kubernetes (giả định), port 8084 (context-path: /file).
-
-*(Diagram mẫu - thay bằng Draw.io nếu cần. Dưới là Mermaid code, GitHub sẽ render tự động:)*
-
 ```mermaid
 graph TD
-    A[Client/App] -->|REST API| B["File-Service (Port 8084 /file)"]
+    A[Client/App] -->|REST API| B[File-Service Port 8084]
     B -->|JWT Auth| D[CustomJwtDecoder]
-    B -->|Upload/Validate| E[AWS Rekognition (analyze images)]
-    B -->|Store Metadata| F[MongoDB (file_mgmt)]
-    B -->|Persist File| G[AWS S3 (bucket: ${AWS_BUCKET_NAME})]
-    B -->|Local Fallback| H[Local Storage (D:/upload)]
-    I[Delete/By URL] --> B
+    B -->|Upload/Validate| E[AWS Rekognition]
+    B -->|Store Metadata| F[MongoDB file_mgmt]
+    B -->|Persist File| G[AWS S3 Bucket]
+    B -->|Local Fallback| H[Local Storage]
+    I[Delete by URL] --> B
+    
     style B fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
