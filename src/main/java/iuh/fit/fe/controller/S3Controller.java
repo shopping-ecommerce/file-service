@@ -66,4 +66,16 @@ public class S3Controller {
                 .result(results)
                 .build();
     }
+
+    @PreAuthorize("hasAuthority('UPLOAD_FILE')")
+    @PostMapping(value = "/s3/upload-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<String> uploadPdf(@RequestPart("file") MultipartFile file) throws IOException {
+        log.info("Uploading PDF file: {}", file.getOriginalFilename());
+        String uploadedUrl = s3Service.uploadDoc(file);
+        return ApiResponse.<String>builder()
+                .code(200)
+                .message("PDF file uploaded successfully")
+                .result(uploadedUrl)
+                .build();
+    }
 }

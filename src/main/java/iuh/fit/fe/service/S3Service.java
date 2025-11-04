@@ -158,4 +158,47 @@ public class S3Service {
         // Decode URL-encoded (%2F, %20, ...)
         return URLDecoder.decode(raw, StandardCharsets.UTF_8);
     }
+    public String uploadDoc(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            log.warn("No file provided for upload");
+            return "";
+        }
+
+        // Validate file type
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
+            throw new IllegalArgumentException("Invalid file type. Only PDF files are allowed.");
+        }
+
+        if (!"application/pdf".equalsIgnoreCase(file.getContentType())) {
+            throw new IllegalArgumentException("Invalid content type. Only application/pdf is allowed.");
+        }
+
+        log.info("Starting upload process for file: {}", originalFilename);
+
+        try {
+            // Generate a unique file name
+            String fileName = customizeFileName(originalFilename);
+
+            // Upload the file to S3
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(fileName)
+                            .contentType("application/pdf")
+                            .build(),
+                    RequestBody.fromBytes(file.getBytes())
+            );
+
+            // Generate the file URL
+            String fileUrl = String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, fileName);
+            log.info("Successfully uploaded file: {} -> {}", originalFilename, fileUrl);
+
+            return fileUrl;
+
+        } catch (IOException e) {
+            log.error("Failed to upload file {}: {}", originalFilename, e.getMessage(), e);
+            throw new RuntimeException("Failed to upload file: " + originalFilename, e);
+        }
+    }
 }
